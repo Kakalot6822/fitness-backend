@@ -32,6 +32,6 @@ jobs:
         run: |
           gcloud run deploy fitness-backend \
             --image us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/fitness-repo/fitness-backend \
-            --platform managed \
             --region us-central1 \
+            --platform managed \
             --allow-unauthenticated
