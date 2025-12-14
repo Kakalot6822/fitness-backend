@@ -1,0 +1,5 @@
+service:
+  name: fitness-backend
+  ingress: all
+  ports:
+    - port: 8080
