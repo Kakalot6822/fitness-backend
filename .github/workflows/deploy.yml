@@ -21,12 +21,12 @@ jobs:
 
       - name: Build Docker image
         run: |
-          gcloud builds submit --tag us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/fitness-repo/fitness-backend
+          gcloud builds submit --tag us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/fitness-repo/backend
 
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy fitness-backend \
-            --image us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/fitness-repo/fitness-backend \
+            --image us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/fitness-repo/backend \
             --platform managed \
             --region us-central1 \
             --allow-unauthenticated
