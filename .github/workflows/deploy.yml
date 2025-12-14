@@ -13,25 +13,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 🔐 Authenticate with GCP using SA KEY from GitHub Secrets
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      # 📦 Setup gcloud
       - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      # 🛠️ Build Docker Image with Cloud Build
       - name: Build Docker image
         run: |
           gcloud builds submit \
             --tag us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/fitness-repo/fitness-backend
 
-      # 🚀 Deploy to Cloud Run
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy fitness-backend \
