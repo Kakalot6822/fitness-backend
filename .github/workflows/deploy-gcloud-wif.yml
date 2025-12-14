@@ -1,0 +1,37 @@
+# GitHub Actions workflow: Deploy with Google Cloud using Workload Identity Federation (WIF)
+# Trigger: push to main and manual dispatch
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write    # จำเป็นสำหรับการออก OIDC token ไปยัง GCP
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        uses: google-github-actions/auth@v1
+        with:
+          # แทนที่ค่าด้านล่างด้วยค่าที่คุณตั้งค่าใน GCP
+          workload_identity_provider: "projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/GITHUB-Pool/providers/github-provider"
+          service_account: "service-account@PROJECT_ID.iam.gserviceaccount.com"
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: "PROJECT_ID"
+
+      - name: Deploy example: gcloud run
+        run: |
+          # แทนที่คำสั่งด้านล่างด้วยคำสั่งดีพลอยจริงของคุณ
+          gcloud run deploy my-service \
+            --region=us-central1 \
+            --image=gcr.io/PROJECT_ID/my-image:latest \
+            --platform=managed
