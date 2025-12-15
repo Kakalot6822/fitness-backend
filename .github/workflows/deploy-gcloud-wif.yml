@@ -31,12 +31,12 @@ jobs:
       - name: Build and Push Image
         run: |
           gcloud builds submit \
-            --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/fitness-backend
+            --tag gcr.io/dev-trail-471421-m4/fitness-backend
 
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy fitness-backend \
-            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/fitness-backend \
+            --image gcr.io/dev-trail-471421-m4/fitness-backend \
             --region asia-southeast1 \
             --platform managed \
             --allow-unauthenticated
