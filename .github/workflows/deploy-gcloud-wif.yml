@@ -22,8 +22,8 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           token_format: access_token
-          workload_identity_provider: "projects/${{ secrets.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/${{ secrets.GCP_WORKLOAD_IDENTITY_POOL_ID }}/providers/${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_ID }}"
-          service_account: "${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}"
+          workload_identity_provider: "projects/1080063722000/locations/global/workloadIdentityPools/kakalot/providers/githubbOIDC"
+          service_account: "github-deploy@dev-trail-471421-m4.iam.gserviceaccount.com"
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
