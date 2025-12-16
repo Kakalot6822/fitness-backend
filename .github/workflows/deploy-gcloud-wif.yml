@@ -1,12 +1,10 @@
-﻿name: Deploy to Cloud Run via GCP WIF (Simplified)
+name: Deploy to Cloud Run via GCP WIF (Simplified)
 
-# กำหนดให้ Workflow ทำงานเมื่อมีการ Push ไปยัง branch 'main'
 on:
   push:
     branches:
       - main
 
-# กำหนดสิทธิ์ที่จำเป็นสำหรับ Actions (id-token: write สำคัญสำหรับ WIF)
 permissions:
   contents: 'read'
   id-token: 'write'
@@ -20,36 +18,21 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. การยืนยันตัวตน (Authentication) ด้วย Workload Identity Federation (WIF)
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v2'
         with:
-          # Full Resource Name ของ Workload Identity Provider (แก้ไขสำเร็จแล้ว)
           workload_identity_provider: 'projects/${{ secrets.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/${{ secrets.GCP_WIP_ID }}/providers/${{ secrets.GCP_WIP_PROVIDER }}' 
-          # Service Account ที่มีสิทธิ์ในการ Deploy (แก้ไขสำเร็จแล้ว)
           service_account: '${{ secrets.GCP_SA_EMAIL }}'
           
-      # 2. ตั้งค่า gcloud CLI และ Project ID
       - name: Set up Cloud SDK
         uses: 'google-github-actions/setup-gcloud@v2'
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
-          # ไม่ต้องมีการตั้งค่าเพิ่มเติม เพราะ 'auth' จัดการ Credentials แล้ว
 
-      # 3. Deploy ไปยัง Cloud Run (รวม Build และ Push ใน Action เดียว)
       - name: Build, Push, and Deploy to Cloud Run
-        # 💡 Action นี้รองรับการ Build Docker Image เองเมื่อใช้พารามิเตอร์ 'source'
         uses: 'google-github-actions/deploy-cloudrun@v2'
         with:
           service: ${{ secrets.SERVICE_NAME }}
           region: ${{ secrets.GCP_REGION }}
-          # 💡 ใช้ 'source' เพื่อระบุ Path ไปยัง Dockerfile/โค้ด (ตัดปัญหา Build/Push Action)
-          source: ${{ secrets.PATH_TO_DOCKERFILE }} 
-          # (Action จะใช้ PATH_TO_DOCKERFILE ซึ่งมีค่าเป็น '.' ในการหา Dockerfile)
-          
-          # (ทางเลือก) ถ้าต้องการให้เปิดการเข้าถึงแบบไม่ยืนยันตัวตน
-          # allow-unauthenticated: true
-Bracknano .github/workflows/deploy-gcloud-wif.yml
-nano .github/workflows/deploy-gcloud-wif.yml
-
+          source: ${{ secrets.PATH_TO_DOCKERFILE }}
