@@ -1,4 +1,4 @@
-﻿name: Deploy to Cloud Run via GCP WIF
+﻿name: Deploy to Cloud Run via GCP WIF (Simplified)
 
 # กำหนดให้ Workflow ทำงานเมื่อมีการ Push ไปยัง branch 'main'
 on:
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   deploy:
-    name: Build, Push, and Deploy to Cloud Run
+    name: Deploy Container to Cloud Run
     runs-on: ubuntu-latest
 
     steps:
@@ -25,9 +25,9 @@ jobs:
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v2'
         with:
-          # แก้ไขปัญหา WIF/Invalid Value: ใช้ Secrets เพื่อสร้าง Full Resource Name ที่ถูกต้อง
+          # Full Resource Name ของ Workload Identity Provider (แก้ไขสำเร็จแล้ว)
           workload_identity_provider: 'projects/${{ secrets.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/${{ secrets.GCP_WIP_ID }}/providers/${{ secrets.GCP_WIP_PROVIDER }}' 
-          # Service Account ที่มีสิทธิ์ในการ Deploy
+          # Service Account ที่มีสิทธิ์ในการ Deploy (แก้ไขสำเร็จแล้ว)
           service_account: '${{ secrets.GCP_SA_EMAIL }}'
           
       # 2. ตั้งค่า gcloud CLI และ Project ID
@@ -37,23 +37,16 @@ jobs:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           # ไม่ต้องมีการตั้งค่าเพิ่มเติม เพราะ 'auth' จัดการ Credentials แล้ว
 
-      # 3. Build และ Push Docker Image ไปยัง Artifact Registry
-      - name: Build and Push Docker Image
-        # 🛠️ แก้ไขปัญหา Action Not Found: เปลี่ยนชื่อ Action เป็น 'build-and-push-docker' 
-        uses: 'google-github-actions/build-and-push-docker@v2' 
-        with:
-          # สร้าง Image Path ในรูปแบบ REGION-docker.pkg.dev/PROJECT_ID/...
-          image: '${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/cloud-run-source-deploy/${{ secrets.SERVICE_NAME }}'
-          tag: 'sha-${{ github.sha }}'
-          dockerfile: ${{ secrets.PATH_TO_DOCKERFILE }} 
-          
-      # 4. Deploy ไปยัง Cloud Run
-      - name: Deploy to Cloud Run
+      # 3. Deploy ไปยัง Cloud Run (รวม Build และ Push ใน Action เดียว)
+      - name: Build, Push, and Deploy to Cloud Run
+        # 💡 Action นี้รองรับการ Build Docker Image เองเมื่อใช้พารามิเตอร์ 'source'
         uses: 'google-github-actions/deploy-cloudrun@v2'
         with:
           service: ${{ secrets.SERVICE_NAME }}
           region: ${{ secrets.GCP_REGION }}
-          # ใช้ Image URL ที่เพิ่ง Build และ Push ไป (จาก Step 3)
-          image: '${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/cloud-run-source-deploy/${{ secrets.SERVICE_NAME }}:sha-${{ github.sha }}'
+          # 💡 ใช้ 'source' เพื่อระบุ Path ไปยัง Dockerfile/โค้ด (ตัดปัญหา Build/Push Action)
+          source: ${{ secrets.PATH_TO_DOCKERFILE }} 
+          # (Action จะใช้ PATH_TO_DOCKERFILE ซึ่งมีค่าเป็น '.' ในการหา Dockerfile)
+          
           # (ทางเลือก) ถ้าต้องการให้เปิดการเข้าถึงแบบไม่ยืนยันตัวตน
           # allow-unauthenticated: true
