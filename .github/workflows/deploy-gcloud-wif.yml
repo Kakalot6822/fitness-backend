@@ -1,42 +1,58 @@
 ﻿name: Deploy to Cloud Run via GCP WIF
 
+# กำหนดให้ Workflow ทำงานเมื่อมีการ Push ไปยัง branch 'main'
 on:
   push:
     branches:
       - main
 
+# กำหนดสิทธิ์ที่จำเป็นสำหรับ Actions (id-token: write สำคัญสำหรับ WIF)
 permissions:
-  contents: read
-  id-token: write
+  contents: 'read'
+  id-token: 'write'
 
 jobs:
   deploy:
-    name: Deploy to Cloud Run
+    name: Build, Push, and Deploy to Cloud Run
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
+      # 1. การยืนยันตัวตน (Authentication) ด้วย Workload Identity Federation (WIF)
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v2'
         with:
-          token_format: access_token
-          workload_identity_provider: "projects/1080063722000/locations/global/workloadIdentityPools/kakalot/providers/githubbOIDC"
-          service_account: "github-deploy@dev-trail-471421-m4.iam.gserviceaccount.com"
+          # นี่คือ Full Resource Name ที่สร้างจาก Secrets และถูกต้อง
+          workload_identity_provider: 'projects/${{ secrets.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/${{ secrets.GCP_WIP_ID }}/providers/${{ secrets.GCP_WIP_PROVIDER }}' 
+          # Service Account ที่มีสิทธิ์ในการ Deploy
+          service_account: '${{ secrets.GCP_SA_EMAIL }}'
+          
+      # 2. ตั้งค่า gcloud CLI และ Project ID
+      - name: Set up Cloud SDK
+        uses: 'google-github-actions/setup-gcloud@v2'
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          # ไม่ต้องมีการตั้งค่าเพิ่มเติม เพราะ 'auth' จัดการ Credentials แล้ว
 
-      - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Build and Push Image
-        run: |
-          gcloud builds submit \
-            --tag gcr.io/dev-trail-471421-m4/fitness-backend
-
+      # 3. Build และ Push Docker Image ไปยัง Artifact Registry
+      - name: Build and Push Docker Image
+        uses: 'google-github-actions/build-image@v2'
+        with:
+          # สร้าง Image Path ในรูปแบบ REGION-docker.pkg.dev/PROJECT_ID/...
+          image: '${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/cloud-run-source-deploy/${{ secrets.SERVICE_NAME }}'
+          tag: 'sha-${{ github.sha }}'
+          dockerfile: ${{ secrets.PATH_TO_DOCKERFILE }} 
+          
+      # 4. Deploy ไปยัง Cloud Run
       - name: Deploy to Cloud Run
-        run: |
-          gcloud run deploy fitness-backend \
-            --image gcr.io/dev-trail-471421-m4/fitness-backend \
-            --region asia-southeast1 \
-            --platform managed \
-            --allow-unauthenticated
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          service: ${{ secrets.SERVICE_NAME }}
+          region: ${{ secrets.GCP_REGION }}
+          # ใช้ Image URL ที่เพิ่ง Build และ Push ไป (จาก Step 3)
+          image: '${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/cloud-run-source-deploy/${{ secrets.SERVICE_NAME }}:sha-${{ github.sha }}'
+          # (ทางเลือก) ถ้าต้องการให้เปิดการเข้าถึงแบบไม่ยืนยันตัวตน
+          # allow-unauthenticated: true
