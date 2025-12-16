@@ -50,3 +50,6 @@ jobs:
           
           # (ทางเลือก) ถ้าต้องการให้เปิดการเข้าถึงแบบไม่ยืนยันตัวตน
           # allow-unauthenticated: true
+Bracknano .github/workflows/deploy-gcloud-wif.yml
+nano .github/workflows/deploy-gcloud-wif.yml
+
