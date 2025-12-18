@@ -2,57 +2,46 @@ name: Deploy to Cloud Run (GCP WIF)
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  id-token: write   # สำคัญมาก สำหรับ WIF
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: read
-      id-token: write   # สำคัญมากสำหรับ WIF
-
-    env:
-      PROJECT_ID: dev-trail-471421-m4
-      REGION: asia-southeast1
-      SERVICE: fitness-backend
-      GAR_LOCATION: asia-southeast1
-      REPOSITORY: fitness
-      IMAGE: fitness-backend
-
     steps:
-      - name: Checkout
+      - name: Checkout source
         uses: actions/checkout@v4
 
-      # 🔐 Auth ด้วย Workload Identity Federation
-      - name: Authenticate to Google Cloud
+      - name: Authenticate to Google Cloud (WIF)
         uses: google-github-actions/auth@v2
         with:
-          token_format: access_token
           workload_identity_provider: projects/1080063722000/locations/global/workloadIdentityPools/github-pool/providers/github-wif-01
           service_account: github-deploy@dev-trail-471421-m4.iam.gserviceaccount.com
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: dev-trail-471421-m4
 
-      - name: Configure Docker for Artifact Registry
-        run: |
-          gcloud auth configure-docker asia-southeast1-docker.pkg.dev --quiet
+      - name: Configure Docker
+        run: gcloud auth configure-docker asia-southeast1-docker.pkg.dev --quiet
 
       - name: Build Docker image
         run: |
-          docker build -t asia-southeast1-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:latest .
+          docker build -t asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/fitness/fitness-backend:latest .
 
       - name: Push Docker image
         run: |
-          docker push asia-southeast1-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:latest
+          docker push asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/fitness/fitness-backend:latest
 
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy $SERVICE \
-            --image asia-southeast1-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:latest \
-            --region $REGION \
+          gcloud run deploy fitness-backend \
+            --image asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/fitness/fitness-backend:latest \
+            --region asia-southeast1 \
             --platform managed \
-            --allow-unauthenticated \
-            --port 8080
+            --allow-unauthenticated
