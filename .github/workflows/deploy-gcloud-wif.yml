@@ -5,25 +5,19 @@ on:
     branches:
       - main
 
-env:
-  PROJECT_ID: dev-trail-471421-m4
-  REGION: asia-southeast1
-  SERVICE: fitness-backend
-  IMAGE: asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/fitness/fitness-backend
+permissions:
+  contents: read
+  id-token: write   # จำเป็นมากสำหรับ WIF
 
 jobs:
   deploy:
-    permissions:
-      contents: read
-      id-token: write   # ⭐ จำเป็นสำหรับ WIF
-
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout source
         uses: actions/checkout@v4
 
-      # ===== Auth ด้วย Workload Identity Federation =====
+      # 🔐 Auth ด้วย Workload Identity Federation
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -35,27 +29,20 @@ jobs:
         with:
           project_id: dev-trail-471421-m4
 
-      # ===== Docker Auth =====
-      - name: Configure Docker
+      # 🐳 Build & Push image ไป Artifact Registry
+      - name: Build and Push Docker image
         run: |
           gcloud auth configure-docker asia-southeast1-docker.pkg.dev --quiet
 
-      # ===== Build & Push Image =====
-      - name: Build Docker image
-        run: |
-          docker build -t $IMAGE:${{ github.sha }} .
+          docker build -t asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/cloud-run/fitness-backend:latest .
+          docker push asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/cloud-run/fitness-backend:latest
 
-      - name: Push Docker image
-        run: |
-          docker push $IMAGE:${{ github.sha }}
-
-      # ===== Deploy to Cloud Run =====
+      # 🚀 Deploy ไป Cloud Run
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy $SERVICE \
-            --image $IMAGE:${{ github.sha }} \
-            --region $REGION \
-            --project $PROJECT_ID \
+          gcloud run deploy fitness-backend \
+            --image asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/cloud-run/fitness-backend:latest \
+            --region asia-southeast1 \
             --platform managed \
             --allow-unauthenticated \
             --port 8080
