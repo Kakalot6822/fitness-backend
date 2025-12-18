@@ -1,7 +1,7 @@
 - name: Build and Push Docker Image
         run: |
           gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
-          # ตรวจสอบ: ต้องมีแค่ REGION / PROJECT_ID / SERVICE_NAME เท่านั้น (3 ส่วน)
+          # ลบชื่อ SERVICE_NAME ที่ซ้ำกันออก ให้เหลือแค่ 3 ส่วนหลักแบบนี้ครับ
           docker build -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.SERVICE_NAME }}:${{ github.sha }} .
           docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.SERVICE_NAME }}:${{ github.sha }}
 
@@ -10,4 +10,5 @@
         with:
           service: ${{ secrets.SERVICE_NAME }}
           region: ${{ secrets.GCP_REGION }}
+          # ตรงนี้ต้องแก้ให้ตรงกับข้างบนด้วยครับ
           image: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.SERVICE_NAME }}:${{ github.sha }}
