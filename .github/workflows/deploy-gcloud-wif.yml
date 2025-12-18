@@ -7,10 +7,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
-      id-token: write   # จำเป็นสำหรับ WIF
+      id-token: write   # สำคัญมาก สำหรับ WIF
 
     env:
       PROJECT_ID: dev-trail-471421-m4
@@ -34,6 +33,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.PROJECT_ID }}
+          version: '>= 460.0.0'
 
       - name: Docker auth (Artifact Registry)
         run: |
