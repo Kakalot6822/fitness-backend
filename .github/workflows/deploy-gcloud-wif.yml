@@ -1,7 +1,7 @@
 - name: Build and Push Docker Image
         run: |
           gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
-          # ตรวจสอบว่ามีแค่ GCP_REGION/GCP_PROJECT_ID/SERVICE_NAME เท่านั้น
+          # ตรวจสอบ: ต้องมีแค่ REGION / PROJECT_ID / SERVICE_NAME เท่านั้น (3 ส่วน)
           docker build -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.SERVICE_NAME }}:${{ github.sha }} .
           docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.SERVICE_NAME }}:${{ github.sha }}
 
