@@ -1,58 +1,9 @@
-name: Deploy to Cloud Run (GCP WIF)
-
-on:
-  push:
-    branches: ["main"]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write   # สำคัญมากสำหรับ WIF
-
-    env:
-      PROJECT_ID: dev-trail-471421-m4
-      REGION: asia-southeast1
-      SERVICE: fitness-backend
-      IMAGE: asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/fitness-backend/fitness-backend
-
-    steps:
-      # 1. Checkout
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      # 2. Auth with Workload Identity Federation
-      - name: Authenticate to Google Cloud (WIF)
-        id: auth
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: projects/1080063722000/locations/global/workloadIdentityPools/github-pool/providers/github-wif-01
-          service_account: github-deploy@dev-trail-471421-m4.iam.gserviceaccount.com
-
-      # 3. Setup gcloud
-      - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: dev-trail-471421-m4
-
-      # 4. Configure Docker (สำคัญมาก)
-      - name: Configure Docker for Artifact Registry
-        run: |
-          gcloud auth configure-docker asia-southeast1-docker.pkg.dev --quiet
-
-      # 5. Build & Push image
-      - name: Build and push Docker image
-        run: |
-          docker build -t $IMAGE:$GITHUB_SHA .
-          docker push $IMAGE:$GITHUB_SHA
-
-      # 6. Deploy to Cloud Run
-      - name: Deploy to Cloud Run
-        run: |
-          gcloud run deploy $SERVICE \
-            --image $IMAGE:$GITHUB_SHA \
-            --region $REGION \
-            --platform managed \
-            --allow-unauthenticated \
-            --quiet
+- name: Deploy to Cloud Run
+  run: |
+    gcloud run deploy $SERVICE \
+      --image $IMAGE:$GITHUB_SHA \
+      --region $REGION \
+      --platform managed \
+      --service-account github-deploy@dev-trail-471421-m4.iam.gserviceaccount.com \
+      --allow-unauthenticated \
+      --quiet
