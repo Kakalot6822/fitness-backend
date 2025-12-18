@@ -1,15 +1,17 @@
 FROM node:18-slim
 WORKDIR /usr/src/app
 
-# คัดลอกเฉพาะ package.json มาก่อนเพื่อสร้าง Layer Cache
+# คัดลอกไฟล์จัดการ package
 COPY backend/package*.json ./
 
-# รัน install โดยลบ cache เก่าทิ้งและข้าม optional dependencies
-RUN npm cache clean --force &&     npm install --no-audit --no-fund
+# ติดตั้งเฉพาะ library ที่จำเป็นสำหรับรัน (ลดโอกาส error จาก devDependencies)
+RUN npm install --omit=dev --no-audit
 
-# คัดลอกไฟล์โค้ดทั้งหมด (ยกเว้น node_modules ถ้ามีในเครื่อง)
+# คัดลอกโค้ดทั้งหมดจาก backend
 COPY backend/ .
 
+# ตรวจสอบว่ามีไฟล์อยู่จริงก่อนรัน (เพื่อ debug ใน log)
+RUN ls -la
+
 EXPOSE 8080
-# มั่นใจว่า start script ใน package.json ถูกต้อง
 CMD [ "npm", "start" ]
