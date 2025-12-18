@@ -5,21 +5,21 @@ on:
     branches:
       - main
 
-env:
-  PROJECT_ID: dev-trail-471421-m4
-  REGION: asia-southeast1
-  SERVICE: fitness-backend
-  GAR_LOCATION: asia-southeast1-docker.pkg.dev
-  REPOSITORY: fitness-backend
-  IMAGE: fitness-backend
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     permissions:
       contents: read
-      id-token: write
+      id-token: write   # สำคัญมากสำหรับ WIF
+
+    env:
+      PROJECT_ID: dev-trail-471421-m4
+      REGION: asia-southeast1
+      SERVICE: fitness-backend
+      GAR_LOCATION: asia-southeast1
+      REPOSITORY: fitness
+      IMAGE: fitness-backend
 
     steps:
       - name: Checkout
@@ -29,30 +29,29 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
+          token_format: access_token
           workload_identity_provider: projects/1080063722000/locations/global/workloadIdentityPools/github-pool/providers/github-wif-01
           service_account: github-deploy@dev-trail-471421-m4.iam.gserviceaccount.com
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: dev-trail-471421-m4
 
-      # 🔑 Login Artifact Registry
-      - name: Configure Docker
+      - name: Configure Docker for Artifact Registry
         run: |
           gcloud auth configure-docker asia-southeast1-docker.pkg.dev --quiet
 
-      # 🐳 Build & Push Image
-      - name: Build and Push Docker image
+      - name: Build Docker image
         run: |
-          docker build -t $GAR_LOCATION/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA .
-          docker push $GAR_LOCATION/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA
+          docker build -t asia-southeast1-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:latest .
 
-      # 🚀 Deploy Cloud Run
+      - name: Push Docker image
+        run: |
+          docker push asia-southeast1-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:latest
+
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy $SERVICE \
-            --image $GAR_LOCATION/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA \
+            --image asia-southeast1-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:latest \
             --region $REGION \
             --platform managed \
             --allow-unauthenticated \
