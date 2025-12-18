@@ -5,16 +5,24 @@ on:
     branches:
       - main
 
-permissions:
-  contents: read
-  id-token: write   # จำเป็นมากสำหรับ WIF
+env:
+  PROJECT_ID: dev-trail-471421-m4
+  REGION: asia-southeast1
+  SERVICE: fitness-backend
+  GAR_LOCATION: asia-southeast1-docker.pkg.dev
+  REPOSITORY: fitness-backend
+  IMAGE: fitness-backend
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      id-token: write
+
     steps:
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v4
 
       # 🔐 Auth ด้วย Workload Identity Federation
@@ -24,25 +32,28 @@ jobs:
           workload_identity_provider: projects/1080063722000/locations/global/workloadIdentityPools/github-pool/providers/github-wif-01
           service_account: github-deploy@dev-trail-471421-m4.iam.gserviceaccount.com
 
-      - name: Set up gcloud
+      - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: dev-trail-471421-m4
 
-      # 🐳 Build & Push image ไป Artifact Registry
-      - name: Build and Push Docker image
+      # 🔑 Login Artifact Registry
+      - name: Configure Docker
         run: |
           gcloud auth configure-docker asia-southeast1-docker.pkg.dev --quiet
 
-          docker build -t asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/cloud-run/fitness-backend:latest .
-          docker push asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/cloud-run/fitness-backend:latest
+      # 🐳 Build & Push Image
+      - name: Build and Push Docker image
+        run: |
+          docker build -t $GAR_LOCATION/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA .
+          docker push $GAR_LOCATION/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA
 
-      # 🚀 Deploy ไป Cloud Run
+      # 🚀 Deploy Cloud Run
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy fitness-backend \
-            --image asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/cloud-run/fitness-backend:latest \
-            --region asia-southeast1 \
+          gcloud run deploy $SERVICE \
+            --image $GAR_LOCATION/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA \
+            --region $REGION \
             --platform managed \
             --allow-unauthenticated \
             --port 8080
