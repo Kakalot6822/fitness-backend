@@ -5,58 +5,66 @@ on:
     branches:
       - main
 
-permissions:
-  contents: read
-  id-token: write   # จำเป็นสำหรับ WIF
-
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION: ${{ secrets.GCP_REGION }}
-  SERVICE: ${{ secrets.GCP_RUN_SERVICE }}
-  SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
-  WORKLOAD_PROVIDER: ${{ secrets.GCP_WORKLOAD_PROVIDER }}
+  PROJECT_ID: dev-trail-471421-m4
+  REGION: asia-southeast1
+  SERVICE: fitness-backend
+  ARTIFACT_REPO: fitness
+  IMAGE_NAME: fitness-backend
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      id-token: write   # ⭐ จำเป็นมากสำหรับ WIF
+
     steps:
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # ---------- AUTH ----------
-      - name: Authenticate to Google Cloud (WIF)
+      # =========================
+      # Auth with Workload Identity
+      # =========================
+      - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ env.WORKLOAD_PROVIDER }}
-          service_account: ${{ env.SERVICE_ACCOUNT }}
+          workload_identity_provider: projects/1080063722000/locations/global/workloadIdentityPools/kakalot/providers/github-wif-01
+          service_account: github-deploy@dev-trail-471421-m4.iam.gserviceaccount.com
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: ${{ env.PROJECT_ID }}
+          project_id: dev-trail-471421-m4
 
-      # ---------- DOCKER LOGIN (Artifact Registry) ----------
+      # =========================
+      # Docker login (Artifact Registry)
+      # =========================
       - name: Configure Docker for Artifact Registry
         run: |
           gcloud auth print-access-token \
             | docker login -u oauth2access_token --password-stdin \
-              https://${{ env.REGION }}-docker.pkg.dev
+              https://asia-southeast1-docker.pkg.dev
 
-      # ---------- BUILD & PUSH ----------
-      - name: Build and push Docker image
+      # =========================
+      # Build & Push Image
+      # =========================
+      - name: Build Docker image
         run: |
-          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/fitness/fitness-backend:${{ github.sha }}"
-          docker build -t $IMAGE .
-          docker push $IMAGE
-          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+          docker build -t asia-southeast1-docker.pkg.dev/$PROJECT_ID/$ARTIFACT_REPO/$IMAGE_NAME:latest .
 
-      # ---------- DEPLOY ----------
+      - name: Push Docker image
+        run: |
+          docker push asia-southeast1-docker.pkg.dev/$PROJECT_ID/$ARTIFACT_REPO/$IMAGE_NAME:latest
+
+      # =========================
+      # Deploy to Cloud Run
+      # =========================
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy ${{ env.SERVICE }} \
-            --image $IMAGE \
-            --region ${{ env.REGION }} \
+          gcloud run deploy $SERVICE \
+            --image asia-southeast1-docker.pkg.dev/$PROJECT_ID/$ARTIFACT_REPO/$IMAGE_NAME:latest \
+            --region $REGION \
             --platform managed \
-            --service-account ${{ env.SERVICE_ACCOUNT }} \
             --allow-unauthenticated
