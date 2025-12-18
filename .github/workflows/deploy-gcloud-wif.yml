@@ -1,7 +1,7 @@
 - name: Build and Push Docker Image
         run: |
           gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
-          # ตรวจสอบให้แน่ใจว่าไม่มี ${{ secrets.GCP_REGION }}-docker.pkg.dev ซ้ำซ้อนในบรรทัดเดียวกัน
+          # ตรวจสอบให้แน่ใจว่าไม่มีการเว้นวรรคระหว่าง URL และ Tag
           docker build -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.SERVICE_NAME }}:${{ github.sha }} .
           docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.SERVICE_NAME }}:${{ github.sha }}
 
