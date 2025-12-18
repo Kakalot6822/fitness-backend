@@ -16,7 +16,7 @@ jobs:
       PROJECT_ID: dev-trail-471421-m4
       REGION: asia-southeast1
       SERVICE: fitness-backend
-      # ตรวจสอบชื่อ Artifact Registry repository ให้ตรง (ปัจจุบันตั้งไว้ว่า fitness)
+      # ตรวจสอบชื่อ Image path ให้ตรงกับ Artifact Registry ของคุณ
       IMAGE: asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/fitness/fitness-backend
 
     steps:
@@ -24,32 +24,32 @@ jobs:
         uses: actions/checkout@v4
 
       - id: 'auth'
-        name: Auth to Google Cloud (WIF)
+        name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           token_format: 'access_token'
-          # แก้ไขจาก kakalot เป็น github-pool ตามค่าจริงที่ตรวจเจอ
+          # ใช้ github-pool ตามที่ตรวจสอบพบในระบบจริง
           workload_identity_provider: projects/1080063722000/locations/global/workloadIdentityPools/github-pool/providers/github-wif-01
           service_account: github-deploy@dev-trail-471421-m4.iam.gserviceaccount.com
 
-      - name: Setup gcloud
+      - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: dev-trail-471421-m4
 
-      - name: Docker auth
+      - name: Docker login
         run: |
           gcloud auth configure-docker asia-southeast1-docker.pkg.dev --quiet
 
-      - name: Build and push image
+      - name: Build and Push Container
         run: |
-          docker build -t $IMAGE:$GITHUB_SHA .
-          docker push $IMAGE:$GITHUB_SHA
+          docker build -t $IMAGE:${{ github.sha }} .
+          docker push $IMAGE:${{ github.sha }}
 
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy $SERVICE \
-            --image $IMAGE:$GITHUB_SHA \
+            --image $IMAGE:${{ github.sha }} \
             --region $REGION \
             --platform managed \
             --port 8080 \
