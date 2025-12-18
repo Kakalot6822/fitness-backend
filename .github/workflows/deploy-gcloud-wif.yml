@@ -2,7 +2,7 @@ name: Deploy to Cloud Run (GCP WIF)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   deploy:
@@ -10,7 +10,7 @@ jobs:
 
     permissions:
       contents: read
-      id-token: write
+      id-token: write   # สำคัญมาก สำหรับ WIF
 
     env:
       PROJECT_ID: dev-trail-471421-m4
@@ -19,34 +19,41 @@ jobs:
       IMAGE: asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/fitness-backend/fitness-backend
 
     steps:
+      # 1. Checkout code
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 2. Auth to Google Cloud ด้วย Workload Identity Federation
       - id: auth
-        name: Auth to Google Cloud (WIF)
+        name: Authenticate to Google Cloud (WIF)
         uses: google-github-actions/auth@v2
         with:
           token_format: access_token
-          workload_identity_provider: projects/1080063722000/locations/global/workloadIdentityPools/kakalot/providers/github-wif-01
+          workload_identity_provider: projects/1080063722000/locations/global/workloadIdentityPools/github-pool/providers/github-wif-01
           service_account: github-deploy@dev-trail-471421-m4.iam.gserviceaccount.com
 
+      # 3. Setup gcloud
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: dev-trail-471421-m4
+          project_id: ${{ env.PROJECT_ID }}
           version: '>= 460.0.0'
 
+      # 4. Docker login (Artifact Registry)
       - name: Docker auth
         run: |
-          echo "${{ steps.auth.outputs.access_token }}" \
-          | docker login -u oauth2access_token --password-stdin \
+          echo "${{ steps.auth.outputs.access_token }}" | docker login \
+            -u oauth2access_token \
+            --password-stdin \
             https://asia-southeast1-docker.pkg.dev
 
+      # 5. Build & Push image
       - name: Build and push image
         run: |
           docker build -t $IMAGE:$GITHUB_SHA .
           docker push $IMAGE:$GITHUB_SHA
 
+      # 6. Deploy to Cloud Run
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy $SERVICE \
