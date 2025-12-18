@@ -1,16 +1,16 @@
 FROM node:18-slim
 WORKDIR /usr/src/app
 
-# คัดลอกไฟล์จัดการ package
-COPY backend/package*.json ./
+# คัดลอกไฟล์ package
+COPY package*.json ./
 
-# ติดตั้งเฉพาะ library ที่จำเป็นสำหรับรัน (ลดโอกาส error จาก devDependencies)
-RUN npm install --omit=dev --no-audit
+# ติดตั้ง library แบบสะอาดที่สุด
+RUN npm install --omit=dev --no-audit --no-fund
 
-# คัดลอกโค้ดทั้งหมดจาก backend
-COPY backend/ .
+# คัดลอกไฟล์ทั้งหมด (ซึ่งตอนนี้อยู่ที่ระดับเดียวกันหมดแล้ว)
+COPY . .
 
-# ตรวจสอบว่ามีไฟล์อยู่จริงก่อนรัน (เพื่อ debug ใน log)
+# ตรวจสอบโครงสร้างไฟล์ภายใน container เพื่อความชัวร์ (ดูได้ใน log)
 RUN ls -la
 
 EXPOSE 8080
