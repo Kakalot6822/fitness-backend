@@ -1,32 +1,9 @@
-name: Deploy to Cloud Run
-on:
-  push:
-    branches:
-      - main
-
-permissions:
-  contents: 'read'
-  id-token: 'write'
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - id: 'auth'
-        uses: 'google-github-actions/auth@v2'
-        with:
-          workload_identity_provider: 'projects/1080063722000/locations/global/workloadIdentityPools/kakalot/providers/github-wif-01'
-          service_account: 'github-deploy@dev-trail-471421-m4.iam.gserviceaccount.com'
-
-      - name: Set up Cloud SDK
-        uses: 'google-github-actions/setup-gcloud@v2'
-
-      - name: Build and Push Docker Image
+- name: Build and Push Docker Image
         run: |
-          gcloud auth configure-docker asia-southeast1-docker.pkg.dev --quiet
+          # 1. ใช้ Token จาก gcloud มา Login เข้า Docker Registry โดยตรง
+          gcloud auth print-access-token | docker login -u oauth2access_token --password-stdin https://asia-southeast1-docker.pkg.dev
+          
+          # 2. Build และ Push ตามปกติ
           docker build -t asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/fitness-backend:${{ github.sha }} .
           docker push asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/fitness-backend:${{ github.sha }}
 
