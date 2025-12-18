@@ -16,7 +16,6 @@ jobs:
       PROJECT_ID: dev-trail-471421-m4
       REGION: asia-southeast1
       SERVICE: fitness-backend
-      # ตรวจสอบว่า Image path นี้มีอยู่จริงใน Artifact Registry
       IMAGE: asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/fitness/fitness-backend
 
     steps:
@@ -28,7 +27,6 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           token_format: 'access_token'
-          # จุดที่สำคัญที่สุด: ต้องเป็น github-pool เท่านั้น
           workload_identity_provider: projects/1080063722000/locations/global/workloadIdentityPools/github-pool/providers/github-wif-01
           service_account: github-deploy@dev-trail-471421-m4.iam.gserviceaccount.com
 
