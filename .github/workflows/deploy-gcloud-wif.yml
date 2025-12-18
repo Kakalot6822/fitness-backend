@@ -7,9 +7,10 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     permissions:
       contents: read
-      id-token: write   # สำคัญมาก สำหรับ WIF
+      id-token: write   # ⭐ จำเป็นสำหรับ WIF
 
     env:
       PROJECT_ID: dev-trail-471421-m4
@@ -18,9 +19,11 @@ jobs:
       IMAGE: asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/fitness-backend/fitness-backend
 
     steps:
+      # 1. Checkout
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 2. Auth ด้วย Workload Identity Federation
       - id: auth
         name: Authenticate to Google Cloud (WIF)
         uses: google-github-actions/auth@v2
@@ -29,24 +32,27 @@ jobs:
           workload_identity_provider: projects/1080063722000/locations/global/workloadIdentityPools/github-pool/providers/github-wif-01
           service_account: github-deploy@dev-trail-471421-m4.iam.gserviceaccount.com
 
+      # 3. Setup gcloud
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.PROJECT_ID }}
-          version: '>= 460.0.0'
 
-      - name: Docker auth (Artifact Registry)
+      # 4. Login Artifact Registry
+      - name: Docker auth
         run: |
           echo "${{ steps.auth.outputs.access_token }}" | docker login \
             -u oauth2access_token \
             --password-stdin \
             https://asia-southeast1-docker.pkg.dev
 
+      # 5. Build & Push
       - name: Build and push image
         run: |
           docker build -t $IMAGE:$GITHUB_SHA .
           docker push $IMAGE:$GITHUB_SHA
 
+      # 6. Deploy Cloud Run
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy $SERVICE \
