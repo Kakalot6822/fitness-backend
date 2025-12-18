@@ -1,38 +1,62 @@
-name: Deploy to Cloud Run
+name: Deploy to Cloud Run (GCP WIF)
+
 on:
   push:
     branches:
       - main
 
 permissions:
-  contents: 'read'
-  id-token: 'write'
+  contents: read
+  id-token: write   # จำเป็นสำหรับ WIF
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: ${{ secrets.GCP_REGION }}
+  SERVICE: ${{ secrets.GCP_RUN_SERVICE }}
+  SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+  WORKLOAD_PROVIDER: ${{ secrets.GCP_WORKLOAD_PROVIDER }}
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Code
+      - name: Checkout source
         uses: actions/checkout@v4
 
-      - id: 'auth'
-        uses: 'google-github-actions/auth@v2'
+      # ---------- AUTH ----------
+      - name: Authenticate to Google Cloud (WIF)
+        uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: 'projects/1080063722000/locations/global/workloadIdentityPools/kakalot/providers/github-wif-01'
-          service_account: 'github-deploy@dev-trail-471421-m4.iam.gserviceaccount.com'
+          workload_identity_provider: ${{ env.WORKLOAD_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
 
-      - name: Set up Cloud SDK
-        uses: 'google-github-actions/setup-gcloud@v2'
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
 
-      - name: Build and Push Docker Image
+      # ---------- DOCKER LOGIN (Artifact Registry) ----------
+      - name: Configure Docker for Artifact Registry
         run: |
-          gcloud auth print-access-token | docker login -u oauth2access_token --password-stdin https://asia-southeast1-docker.pkg.dev
-          docker build -t asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/fitness-backend:${{ github.sha }} .
-          docker push asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/fitness-backend:${{ github.sha }}
+          gcloud auth print-access-token \
+            | docker login -u oauth2access_token --password-stdin \
+              https://${{ env.REGION }}-docker.pkg.dev
 
+      # ---------- BUILD & PUSH ----------
+      - name: Build and push Docker image
+        run: |
+          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/fitness/fitness-backend:${{ github.sha }}"
+          docker build -t $IMAGE .
+          docker push $IMAGE
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+
+      # ---------- DEPLOY ----------
       - name: Deploy to Cloud Run
-        uses: 'google-github-actions/deploy-cloudrun@v2'
-        with:
-          service: 'fitness-backend'
-          region: 'asia-southeast1'
-          image: 'asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/fitness-backend:${{ github.sha }}'
+        run: |
+          gcloud run deploy ${{ env.SERVICE }} \
+            --image $IMAGE \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --service-account ${{ env.SERVICE_ACCOUNT }} \
+            --allow-unauthenticated
