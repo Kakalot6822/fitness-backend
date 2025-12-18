@@ -2,16 +2,7 @@ name: Deploy to Cloud Run (GCP WIF)
 
 on:
   push:
-    branches:
-      - main
-
-env:
-  PROJECT_ID: dev-trail-471421-m4
-  PROJECT_NUMBER: 1080063722000
-  REGION: asia-southeast1
-  SERVICE: fitness-backend
-  REPOSITORY: fitness-backend
-  IMAGE: asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/fitness-backend/fitness-backend
+    branches: [ "main" ]
 
 jobs:
   deploy:
@@ -19,48 +10,47 @@ jobs:
 
     permissions:
       contents: read
-      id-token: write   # ❗ จำเป็นมากสำหรับ WIF
+      id-token: write
+
+    env:
+      PROJECT_ID: dev-trail-471421-m4
+      REGION: asia-southeast1
+      SERVICE: fitness-backend
+      # ตรวจสอบชื่อ Artifact Registry repository ให้ตรง (ปัจจุบันตั้งไว้ว่า fitness)
+      IMAGE: asia-southeast1-docker.pkg.dev/dev-trail-471421-m4/fitness/fitness-backend
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ---------- AUTH ด้วย Workload Identity Federation ----------
-      - name: Authenticate to Google Cloud
+      - id: 'auth'
+        name: Auth to Google Cloud (WIF)
         uses: google-github-actions/auth@v2
         with:
-          token_format: access_token
+          token_format: 'access_token'
+          # แก้ไขจาก kakalot เป็น github-pool ตามค่าจริงที่ตรวจเจอ
           workload_identity_provider: projects/1080063722000/locations/global/workloadIdentityPools/github-pool/providers/github-wif-01
           service_account: github-deploy@dev-trail-471421-m4.iam.gserviceaccount.com
 
-      - name: Set up gcloud
+      - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: dev-trail-471421-m4
 
-      # ---------- Docker login Artifact Registry ----------
-      - name: Docker login
+      - name: Docker auth
         run: |
           gcloud auth configure-docker asia-southeast1-docker.pkg.dev --quiet
 
-      # ---------- Build & Push Image ----------
-      - name: Build Docker image
+      - name: Build and push image
         run: |
           docker build -t $IMAGE:$GITHUB_SHA .
-          docker tag $IMAGE:$GITHUB_SHA $IMAGE:latest
-
-      - name: Push Docker image
-        run: |
           docker push $IMAGE:$GITHUB_SHA
-          docker push $IMAGE:latest
 
-      # ---------- Deploy to Cloud Run ----------
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy $SERVICE \
-            --image $IMAGE:latest \
+            --image $IMAGE:$GITHUB_SHA \
             --region $REGION \
-            --project $PROJECT_ID \
             --platform managed \
-            --allow-unauthenticated \
-            --port 8080
+            --port 8080 \
+            --allow-unauthenticated
