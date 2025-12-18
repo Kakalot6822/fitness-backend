@@ -18,8 +18,7 @@ jobs:
       - id: 'auth'
         uses: 'google-github-actions/auth@v2'
         with:
-          # ใส่ค่าคงที่ลงไปเลยเพื่อความแน่นอน
-          workload_identity_provider: 'projects/1080063722000/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          workload_identity_provider: 'projects/1080063722000/locations/global/workloadIdentityPools/kakalot/providers/github-wif-01'
           service_account: 'github-deploy@dev-trail-471421-m4.iam.gserviceaccount.com'
 
       - name: Set up Cloud SDK
